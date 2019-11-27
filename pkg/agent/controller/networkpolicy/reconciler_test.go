@@ -80,8 +80,10 @@ func TestReconcilerReconcile(t *testing.T) {
 	appliedToGroup1 := newPodSet(v1beta1.PodReference{"pod1", "ns1"})
 	appliedToGroup2 := newPodSet(v1beta1.PodReference{"pod2", "ns1"})
 	ifaceStore := interfacestore.NewInterfaceStore()
-	ifaceStore.AddInterface(util.GenerateContainerInterfaceName("pod1", "ns1"),
-		&interfacestore.InterfaceConfig{IP: net.ParseIP("2.2.2.2"), OVSPortConfig: &interfacestore.OVSPortConfig{OFPort: 1}})
+	ifaceStore.AddInterface(&interfacestore.InterfaceConfig{
+		InterfaceName: util.GenerateContainerInterfaceName("pod1", "ns1"),
+		IP:            net.ParseIP("2.2.2.2"),
+		OVSPortConfig: &interfacestore.OVSPortConfig{OFPort: 1}})
 	protocolTCP := v1beta1.ProtocolTCP
 	port80 := int32(80)
 	// It represents named port that we can't resolve.
