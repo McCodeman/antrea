@@ -281,12 +281,20 @@ func (c *Controller) addNodeRoute(nodeName string, node *v1.Node) error {
 	}
 	peerGatewayIP := ip.NextIP(peerPodCIDRAddr)
 
+	var tunOFPort int32
+	var remoteIP net.IP
 	if c.ipsecPSK != "" {
 		// Create a separate tunnel port for the Node, as OVS does not support flow
 		// based tunnel for IPSec.
-		if _, err = c.createIPSecTunnelPort(nodeName, peerNodeIP); err != nil {
+		if tunOFPort, err = c.createIPSecTunnelPort(nodeName, peerNodeIP); err != nil {
 			return err
 		}
+		remoteIP = nil
+	} else {
+		// Use the default tunnel port.
+		tunOFPort = types.DefaultTunOFPort
+		// Flow based tunnel. Set remote IP in the OVS flow.
+		remoteIP = peerNodeIP
 	}
 
 	if !flowsAreInstalled { // then install flows
@@ -295,7 +303,8 @@ func (c *Controller) addNodeRoute(nodeName string, node *v1.Node) error {
 			c.nodeConfig.GatewayConfig.MAC,
 			peerGatewayIP,
 			*peerPodCIDR,
-			peerNodeIP)
+			remoteIP,
+			uint32(tunOFPort))
 		if err != nil {
 			return fmt.Errorf("failed to install flows to Node %s: %v", nodeName, err)
 		}
@@ -333,7 +342,7 @@ func (c *Controller) createIPSecTunnelPort(nodeName string, nodeIP net.IP) (int3
 		// TODO: check if Node IP, PSK, or tunnel type changes or handle it in
 		// reconciliation.
 		if interfaceConfig.OFPort != 0 {
-			return 0, nil
+			return interfaceConfig.OFPort, nil
 		}
 	} else {
 		portName := util.GenerateTunnelInterfaceName(nodeName)
